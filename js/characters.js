@@ -71,8 +71,8 @@ const Characters = (() => {
     const colors = outfitColors[outfit] || outfitColors['red-hoodie'];
     const emo    = emotions[emotion]   || emotions.neutral;
 
-    // Skin
-    const sk = '#C47A3A', skShadow = '#A0622A', skLip = '#8B4A2A';
+    // Skin — Latino, warm brown
+    const sk = '#B8693A', skShadow = '#9A5228', skLip = '#7A3E22';
 
     // Hair path based on style
     const hairTop = hair === 'neat'
@@ -102,31 +102,34 @@ const Characters = (() => {
       <line x1="144" y1="198" x2="162" y2="200" stroke="#1A56DB" stroke-width="2.5"/>
     ` : '';
 
-    // Outfit body
+    // Outfit body — broader shoulders and fuller torso (195 lbs, stocky build)
     const isHoodie = outfit === 'red-hoodie' || outfit === 'dark-hoodie';
     const bodyShape = `
-      <ellipse cx="100" cy="395" rx="88" ry="105" fill="${colors.top}"/>
+      <ellipse cx="100" cy="400" rx="100" ry="108" fill="${colors.top}"/>
+      <!-- Broad shoulders -->
+      <ellipse cx="30"  cy="310" rx="32" ry="26" fill="${colors.top}"/>
+      <ellipse cx="170" cy="310" rx="32" ry="26" fill="${colors.top}"/>
       ${isHoodie ? `
-        <path d="M 60,278 Q 80,272 100,274 Q 120,272 140,278 L 148,300 Q 120,310 100,308 Q 80,310 52,300Z" fill="${colors.inner}"/>
-        <line x1="93"  y1="285" x2="89"  y2="400" stroke="${colors.topShadow}" stroke-width="3.5" stroke-linecap="round"/>
-        <line x1="107" y1="285" x2="111" y2="400" stroke="${colors.topShadow}" stroke-width="3.5" stroke-linecap="round"/>
-        <circle cx="100" cy="400" r="5" fill="${colors.topShadow}"/>
+        <path d="M 52,278 Q 76,270 100,272 Q 124,270 148,278 L 158,304 Q 124,316 100,314 Q 76,316 42,304Z" fill="${colors.inner}"/>
+        <line x1="91"  y1="283" x2="86"  y2="405" stroke="${colors.topShadow}" stroke-width="4" stroke-linecap="round"/>
+        <line x1="109" y1="283" x2="114" y2="405" stroke="${colors.topShadow}" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="100" cy="405" r="6" fill="${colors.topShadow}"/>
       ` : outfit === 'dapper' ? `
-        <rect x="78" y="274" width="44" height="120" fill="#ECF0F1"/>
-        <path d="M 78,274 L 65,290 L 78,320Z" fill="#E74C3C"/>
-        <path d="M 122,274 L 135,290 L 122,320Z" fill="#E74C3C"/>
-        <line x1="100" y1="290" x2="100" y2="390" stroke="#BDC3C7" stroke-width="1.5"/>
+        <rect x="74" y="274" width="52" height="124" fill="#ECF0F1"/>
+        <path d="M 74,274 L 58,292 L 74,324Z" fill="#E74C3C"/>
+        <path d="M 126,274 L 142,292 L 126,324Z" fill="#E74C3C"/>
+        <line x1="100" y1="292" x2="100" y2="394" stroke="#BDC3C7" stroke-width="1.5"/>
       ` : `
-        <rect x="82" y="274" width="36" height="120" fill="rgba(255,255,255,0.15)"/>
+        <rect x="78" y="274" width="44" height="124" fill="rgba(255,255,255,0.15)"/>
       `}
     `;
 
-    // Thinking hand pose
+    // Thinking hand pose (shifted left to match wider build)
     const thinkingHand = emotion === 'thinking'
-      ? `<ellipse cx="78" cy="275" rx="20" ry="14" fill="${sk}"/>
-         <rect x="68" y="262" width="10" height="22" rx="5" fill="${sk}"/>
-         <rect x="80" y="260" width="10" height="22" rx="5" fill="${sk}"/>
-         <rect x="90" y="264" width="10" height="18" rx="5" fill="${sk}"/>`
+      ? `<ellipse cx="72" cy="275" rx="22" ry="15" fill="${sk}"/>
+         <rect x="62" y="261" width="10" height="22" rx="5" fill="${sk}"/>
+         <rect x="74" y="259" width="10" height="22" rx="5" fill="${sk}"/>
+         <rect x="85" y="263" width="10" height="18" rx="5" fill="${sk}"/>`
       : '';
 
     // Blush for flustered
@@ -260,7 +263,7 @@ const Characters = (() => {
     const colors = outfitColors[outfit] || outfitColors['red-hoodie'];
     return `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
       <circle cx="40" cy="40" r="40" fill="${colors.top}"/>
-      <ellipse cx="40" cy="36" rx="22" ry="24" fill="#C47A3A"/>
+      <ellipse cx="40" cy="36" rx="22" ry="24" fill="#B8693A"/>
       <ellipse cx="40" cy="22" rx="24" ry="16" fill="#1a1a1a"/>
       <circle cx="18" cy="30" r="8" fill="#1a1a1a"/>
       <circle cx="62" cy="30" r="8" fill="#1a1a1a"/>
