@@ -22,6 +22,11 @@ const Engine = (() => {
     save: null,
   };
 
+  /* ── Module-level flags ─────────────────────────────── */
+  let controlsInited = false;
+  let userTextSpeed  = 22;
+  let chatGeneration = 0;
+
   /* ── DOM refs ────────────────────────────────────────── */
   const $ = id => document.getElementById(id);
   const screens = {
@@ -172,6 +177,8 @@ const Engine = (() => {
   }
 
   function initGameControls() {
+    if (controlsInited) return;
+    controlsInited = true;
     $('ctrl-skip').addEventListener('click', toggleSkip);
     $('ctrl-auto').addEventListener('click', toggleAuto);
     $('ctrl-save').addEventListener('click', saveGame);
@@ -301,7 +308,13 @@ const Engine = (() => {
       if (state.autoPlay) scheduleAutoAdvance();
     });
 
-    box.onclick = () => advance(node.next);
+    box.onclick = () => {
+      if (state.isAnimating) {
+        skipTyping($('narration-text'), node.text);
+        return;
+      }
+      advance(node.next);
+    };
   }
 
   /* ── Dialogue ────────────────────────────────────────── */
@@ -387,31 +400,56 @@ const Engine = (() => {
     $('profile-photo').innerHTML = Characters.noe({ ...state.noeOpts, emotion: 'happy' });
     card.classList.remove('hidden');
 
-    // Swipe buttons
-    $('swipe-yes').onclick = () => {
-      Audio.sfx('swipe');
-      Audio.sfx('match');
-      card.classList.add('hidden');
-      // Animate card flying right
-      card.style.transform = 'translate(-50%, -50%) rotate(15deg) translateX(200%)';
-      card.style.transition = 'transform 0.3s ease';
+    // Helper: animate card off-screen then load next node
+    function swipeCard(dir) {
+      const rotate = dir === 'right' ? '15deg' : '-15deg';
+      const tx     = dir === 'right' ? '140%'  : '-140%';
+      card.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
+      card.style.transform  = `translate(-50%, -50%) rotate(${rotate}) translateX(${tx})`;
+      card.style.opacity    = '0';
       setTimeout(() => {
-        card.style.transform = '';
+        card.style.transform  = '';
         card.style.transition = '';
+        card.style.opacity    = '';
+        card.classList.add('hidden');
         loadNode(node.next);
-      }, 400);
-    };
+      }, 380);
+    }
 
+    // Touch-swipe support
+    let touchStartX = 0;
+    card.addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    card.addEventListener('touchmove', e => {
+      const dx = e.touches[0].clientX - touchStartX;
+      card.style.transition = 'none';
+      card.style.transform  = `translate(calc(-50% + ${dx}px), -50%) rotate(${dx * 0.04}deg)`;
+      card.style.opacity    = String(Math.max(0.4, 1 - Math.abs(dx) / 200));
+    }, { passive: true });
+    card.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (dx > 70) {
+        Audio.sfx('swipe'); Audio.sfx('match');
+        swipeCard('right');
+      } else if (dx < -70) {
+        Audio.sfx('swipe');
+        swipeCard('left');
+      } else {
+        card.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+        card.style.transform  = 'translate(-50%, -50%)';
+        card.style.opacity    = '1';
+      }
+    }, { passive: true });
+
+    // Button swipes
+    $('swipe-yes').onclick = () => {
+      Audio.sfx('swipe'); Audio.sfx('match');
+      swipeCard('right');
+    };
     $('swipe-no').onclick = () => {
       Audio.sfx('swipe');
-      card.style.transform = 'translate(-50%, -50%) rotate(-15deg) translateX(-200%)';
-      card.style.transition = 'transform 0.3s ease';
-      setTimeout(() => {
-        card.style.transform = '';
-        card.style.transition = '';
-        // Still advance the story — we need them to match
-        loadNode(node.next);
-      }, 400);
+      swipeCard('left');
     };
   }
 
@@ -446,22 +484,22 @@ const Engine = (() => {
 
     const chatUI = $('chat-ui');
     chatUI.classList.remove('hidden');
+    chatUI.onclick = null;
 
-    // Set avatar
     $('chat-av').innerHTML = Characters.tinyNoe(state.noeOpts);
-
-    // Update Noe expression
     if (node.emotion) updateNoeSprite(node.emotion);
 
     chatQueue = node.messages || [];
     chatIndex = 0;
 
+    const gen = ++chatGeneration;  // cancel any previous chat delivery
     const msgContainer = $('chat-msgs');
     msgContainer.innerHTML = '';
 
     function deliverNext() {
+      if (gen !== chatGeneration) return; // stale — a new chat node was loaded
+
       if (chatIndex >= chatQueue.length) {
-        // All messages delivered, make clickable to advance
         chatUI.onclick = () => {
           chatUI.onclick = null;
           Audio.sfx('click');
@@ -470,16 +508,16 @@ const Engine = (() => {
         return;
       }
 
-      const msg = chatQueue[chatIndex++];
+      const msg  = chatQueue[chatIndex++];
       const isNoe = msg.from === 'noe';
-
-      // Show typing indicator
       const typing = $('chat-typing');
+
       if (isNoe) {
         typing.classList.remove('hidden');
         setTimeout(() => {
+          if (gen !== chatGeneration) return;
           typing.classList.add('hidden');
-          appendChatMessage(msgContainer, msg.text, msg.from, msg.from === 'player' ? state.playerName : 'Noe');
+          appendChatMessage(msgContainer, msg.text, msg.from, 'Noe');
           Audio.sfx('notification');
           setTimeout(deliverNext, 600);
         }, 900 + msg.text.length * 18);
@@ -510,7 +548,10 @@ const Engine = (() => {
 
   /* ── Chat Choices (appears after chat messages) ──────── */
   function showChatChoice(node) {
-    // Display choices in chat style (still show chat UI underneath)
+    // Clear pending chat-tap-to-advance so it doesn't double-fire
+    const chatUI = $('chat-ui');
+    if (chatUI) chatUI.onclick = null;
+
     const container = $('choice-container');
     container.classList.remove('hidden');
     $('choice-prompt').textContent = 'Your reply:';
@@ -667,11 +708,12 @@ const Engine = (() => {
     state.skipMode = !state.skipMode;
     $('ctrl-skip').classList.toggle('active', state.skipMode);
     if (state.skipMode) {
+      userTextSpeed  = state.textSpeed; // save current before zeroing
       state.textSpeed = 0;
       const node = Story.nodes[state.currentNode];
       if (node && node.next && node.type === 'narration') advance(node.next);
     } else {
-      state.textSpeed = 22;
+      state.textSpeed = userTextSpeed; // restore user's preferred speed
     }
   }
 
@@ -732,6 +774,7 @@ const Engine = (() => {
         document.querySelectorAll('.speed-chip').forEach(x => x.classList.remove('active'));
         c.classList.add('active');
         state.textSpeed = parseInt(c.dataset.ms);
+        userTextSpeed   = state.textSpeed; // keep in sync so skip restore is correct
         Audio.sfx('click');
       });
     });
