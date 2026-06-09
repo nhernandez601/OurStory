@@ -233,10 +233,23 @@ const Engine = (() => {
     Audio.playTrack(track);
   }
 
+  /* ── PNG sprite loader — falls back to SVG if PNG not found ── */
+  function loadSprite(container, pngPath, svgFallback) {
+    const img = new Image();
+    img.className = 'sprite-img';
+    img.onload  = () => { container.innerHTML = ''; container.appendChild(img); };
+    img.onerror = () => { container.innerHTML = svgFallback(); };
+    img.src = pngPath;
+  }
+
   /* ── Sprite management ───────────────────────────────── */
   function updateNoeSprite(emotion) {
     const el = $('noe-sprite');
-    el.innerHTML = Characters.noe({ ...state.noeOpts, emotion: emotion || 'neutral' });
+    loadSprite(
+      el,
+      `img/sprites/noe/${emotion || 'neutral'}.png`,
+      () => Characters.noe({ ...state.noeOpts, emotion: emotion || 'neutral' })
+    );
   }
 
   function showNoeSprite(show) {
@@ -384,7 +397,11 @@ const Engine = (() => {
     applyBackground('app');
 
     const card = $('profile-card');
-    $('profile-photo').innerHTML = Characters.noe({ ...state.noeOpts, emotion: 'happy' });
+    loadSprite(
+      $('profile-photo'),
+      'img/sprites/noe/happy.png',
+      () => Characters.noe({ ...state.noeOpts, emotion: 'happy' })
+    );
     card.classList.remove('hidden');
 
     // Swipe buttons
@@ -424,7 +441,11 @@ const Engine = (() => {
     ms.classList.remove('hidden');
 
     $('match-player-av').innerHTML = Characters.tinyPlayer(state.playerOpts);
-    $('match-noe-av').innerHTML    = Characters.tinyNoe(state.noeOpts);
+    loadSprite(
+      $('match-noe-av'),
+      'img/sprites/noe/avatar.png',
+      () => Characters.tinyNoe(state.noeOpts)
+    );
 
     Audio.sfx('match');
 
@@ -448,7 +469,11 @@ const Engine = (() => {
     chatUI.classList.remove('hidden');
 
     // Set avatar
-    $('chat-av').innerHTML = Characters.tinyNoe(state.noeOpts);
+    loadSprite(
+      $('chat-av'),
+      'img/sprites/noe/avatar.png',
+      () => Characters.tinyNoe(state.noeOpts)
+    );
 
     // Update Noe expression
     if (node.emotion) updateNoeSprite(node.emotion);
