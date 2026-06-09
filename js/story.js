@@ -1473,10 +1473,9 @@ const Story = {
     route_ending: {
       type: 'route',
       routes: [
-        { minRP: 75,  next: 'ending_perfect'  },
-        { minRP: 50,  next: 'ending_good'     },
-        { minRP: 25,  next: 'ending_neutral'  },
-        { minRP: 0,   next: 'ending_bad'      },
+        { minRP: 70, next: 'ending_perfect' },
+        { minRP: 40, next: 'ending_good'    },
+        { minRP: 0,  next: 'ending_bad'     },
       ],
     },
 
