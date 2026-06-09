@@ -1,35 +1,36 @@
 /* ============================================================
    OUR STORY — Visual Novel Engine
-   Handles all game state, rendering, user input, and flow
    ============================================================ */
 
 const Engine = (() => {
 
   /* ── State ───────────────────────────────────────────── */
   const state = {
-    currentNode: null,
+    currentNode:   null,
     romancePoints: Story.startRP,
-    playerName: 'You',
-    playerOpts: { skin: 's2', hairColor: 'hc1', hairStyle: 'wave', vibe: 'sweet' },
-    noeOpts:    { outfit: 'red-hoodie', hair: 'curly', glasses: true },
-    textSpeed: 22,
-    isAnimating: false,
-    autoPlay: false,
-    autoTimer: null,
-    skipMode: false,
-    canAdvance: false,
-    chatMessages: [],
-    save: null,
+    playerName:    'You',
+    playerOpts:    { skin: 's2', hairColor: 'hc1', hairStyle: 'wave', vibe: 'sweet' },
+    noeOpts:       { outfit: 'red-hoodie', hair: 'curly', glasses: true },
+    playerPreset:  -1,   // -1 = custom SVG, 0-4 = preset image index
+    chatBg:        'room',
+    textSpeed:     22,
+    isAnimating:   false,
+    autoPlay:      false,
+    autoTimer:     null,
+    skipMode:      false,
+    canAdvance:    false,
+    save:          null,
   };
 
   /* ── DOM refs ────────────────────────────────────────── */
   const $ = id => document.getElementById(id);
+
   const screens = {
-    loading:  $('loading-screen'),
-    title:    $('title-screen'),
-    create:   $('char-creation'),
-    game:     $('game-screen'),
-    ending:   $('ending-screen'),
+    loading: $('loading-screen'),
+    title:   $('title-screen'),
+    create:  $('char-creation'),
+    game:    $('game-screen'),
+    ending:  $('ending-screen'),
   };
 
   /* ── Screen management ───────────────────────────────── */
@@ -77,6 +78,24 @@ const Engine = (() => {
         document.querySelectorAll('.tab-pane').forEach(x => x.classList.remove('active'));
         t.classList.add('active');
         $('tab-' + t.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Player preset cards
+    document.querySelectorAll('.preset-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.preset-card').forEach(x => x.classList.remove('active'));
+        card.classList.add('active');
+        const idx = parseInt(card.dataset.preset);
+        state.playerPreset = idx;
+        const customOpts = $('custom-player-opts');
+        if (idx === -1) {
+          customOpts.style.display = '';
+        } else {
+          customOpts.style.display = 'none';
+        }
+        updatePlayerPreview();
+        Audio.sfx('click');
       });
     });
 
@@ -153,21 +172,51 @@ const Engine = (() => {
   }
 
   function updatePlayerPreview() {
-    $('player-preview-svg').innerHTML = Characters.player(state.playerOpts);
+    const el = $('player-preview');
+    if (!el) return;
+    if (state.playerPreset >= 0) {
+      const n = state.playerPreset + 1;
+      loadSprite(el, `img/creation/player_${n}.png`,
+        () => Characters.player(state.playerOpts));
+    } else {
+      el.innerHTML = Characters.player(state.playerOpts);
+    }
   }
 
   function updateNoePreview() {
-    $('noe-preview-svg').innerHTML = Characters.noe({ ...state.noeOpts, emotion: 'happy' });
+    const el = $('noe-preview');
+    if (!el) return;
+    // Try outfit-specific creation image, then main sprite, then SVG
+    const outfit = state.noeOpts.outfit;
+    loadSpriteChain(el,
+      [`img/creation/noe_${outfit}.png`, 'img/sprites/noe/happy.png'],
+      () => Characters.noe({ ...state.noeOpts, emotion: 'happy' })
+    );
+  }
+
+  /* Try each path in order; first that loads wins */
+  function loadSpriteChain(container, paths, svgFallback) {
+    if (!paths.length) { container.innerHTML = svgFallback(); return; }
+    const img = new Image();
+    img.className = 'creation-preview-img';
+    img.onload  = () => { container.innerHTML = ''; container.appendChild(img); };
+    img.onerror = () => loadSpriteChain(container, paths.slice(1), svgFallback);
+    img.src = paths[0];
   }
 
   /* ── Game initialization ─────────────────────────────── */
   function startGame() {
     Audio.init();
     showScreen('game');
+    // Clear chat messages for fresh game
+    $('chat-msgs').innerHTML = '';
+    state.chatBg = 'room';
+    const chatUI = $('chat-ui');
+    chatUI.className = chatUI.className.replace(/chat-bg-\S+/g, '').trim();
+    chatUI.classList.add('chat-bg-room');
     updateNoeSprite('neutral');
     updateRomanceMeter();
     initGameControls();
-    // Start from Chapter 1 title card
     loadNode('c1_title');
   }
 
@@ -180,15 +229,46 @@ const Engine = (() => {
     });
   }
 
+  /* ── Chat background picker ──────────────────────────── */
+  function initChatBgPicker() {
+    const btn    = $('chat-bg-btn');
+    const picker = $('chat-bg-picker');
+    if (!btn || !picker) return;
+
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      picker.classList.toggle('hidden');
+    };
+
+    picker.querySelectorAll('.chat-bg-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const bg = opt.dataset.bg;
+        setChatBackground(bg);
+        picker.querySelectorAll('.chat-bg-option').forEach(x => x.classList.remove('active'));
+        opt.classList.add('active');
+        picker.classList.add('hidden');
+        Audio.sfx('click');
+      });
+    });
+
+    document.addEventListener('click', () => picker.classList.add('hidden'));
+  }
+
+  function setChatBackground(bg) {
+    state.chatBg = bg;
+    const chatUI = $('chat-ui');
+    chatUI.className = chatUI.className.replace(/chat-bg-\S+/g, '').trim();
+    chatUI.classList.add('chat-bg-' + bg);
+  }
+
   /* ── Core game loop ──────────────────────────────────── */
   function loadNode(nodeId) {
     if (!nodeId) return;
     const node = Story.nodes[nodeId];
     if (!node) { console.error('Missing node:', nodeId); return; }
     state.currentNode = nodeId;
-    state.canAdvance = false;
+    state.canAdvance  = false;
 
-    // Handle node by type
     switch (node.type) {
       case 'chapter_title': showChapterTitle(node); break;
       case 'narration':     showNarration(node);    break;
@@ -206,19 +286,21 @@ const Engine = (() => {
 
   /* ── Background & Music ──────────────────────────────── */
   const bgMap = {
-    app:            'bg-app',
-    chat:           'bg-chat',
-    golden:         'bg-golden',
-    arcade:         'bg-arcade',
-    innout:         'bg-innout',
-    night:          'bg-night',
+    app:              'bg-app',
+    chat:             'bg-chat',
+    golden:           'bg-golden',
+    arcade:           'bg-arcade',
+    innout:           'bg-innout',
+    night:            'bg-night',
     'ending-perfect': 'bg-ending-perfect',
     'ending-good':    'bg-ending-good',
     'ending-neutral': 'bg-ending-neutral',
     'ending-bad':     'bg-ending-bad',
   };
 
-  let currentBg = null;
+  let currentBg    = null;
+  let currentMusic = null;
+
   function applyBackground(bg) {
     if (!bg || bg === currentBg) return;
     currentBg = bg;
@@ -226,14 +308,13 @@ const Engine = (() => {
     el.className = bgMap[bg] || 'bg-app';
   }
 
-  let currentMusic = null;
   function applyMusic(track) {
     if (!track || track === currentMusic) return;
     currentMusic = track;
     Audio.playTrack(track);
   }
 
-  /* ── PNG sprite loader — falls back to SVG if PNG not found ── */
+  /* ── PNG sprite loader with SVG fallback ─────────────── */
   function loadSprite(container, pngPath, svgFallback) {
     const img = new Image();
     img.className = 'sprite-img';
@@ -254,8 +335,13 @@ const Engine = (() => {
 
   function showNoeSprite(show) {
     const wrap = $('noe-sprite-wrap');
-    if (show) wrap.classList.remove('offscreen');
-    else wrap.classList.add('offscreen');
+    if (show) {
+      wrap.classList.remove('offscreen');
+      wrap.classList.add('sprite-enter');
+      setTimeout(() => wrap.classList.remove('sprite-enter'), 600);
+    } else {
+      wrap.classList.add('offscreen');
+    }
   }
 
   /* ── Romance meter ───────────────────────────────────── */
@@ -293,7 +379,6 @@ const Engine = (() => {
     $('chapter-name').textContent = node.chapterName;
     card.classList.remove('hidden');
 
-    // Auto-advance after animation
     setTimeout(() => {
       card.classList.add('hidden');
       loadNode(node.next);
@@ -329,6 +414,8 @@ const Engine = (() => {
 
     const box = $('dialogue-box');
     box.classList.remove('hidden');
+    box.classList.add('box-enter');
+    setTimeout(() => box.classList.remove('box-enter'), 400);
 
     const speakerEl = $('speaker-name');
     speakerEl.textContent = node.speaker === 'You'
@@ -349,7 +436,7 @@ const Engine = (() => {
     };
   }
 
-  /* ── Narration/Dialogue advance ──────────────────────── */
+  /* ── Advance ─────────────────────────────────────────── */
   function advance(nextId) {
     if (!state.canAdvance && !state.skipMode) return;
     Audio.sfx('click');
@@ -363,7 +450,6 @@ const Engine = (() => {
     hideAllPanels();
     applyBackground(node.background);
 
-    // Keep Noe visible but change expression to neutral/thinking
     showNoeSprite(true);
     updateNoeSprite('thinking');
 
@@ -404,12 +490,9 @@ const Engine = (() => {
     );
     card.classList.remove('hidden');
 
-    // Swipe buttons
     $('swipe-yes').onclick = () => {
       Audio.sfx('swipe');
       Audio.sfx('match');
-      card.classList.add('hidden');
-      // Animate card flying right
       card.style.transform = 'translate(-50%, -50%) rotate(15deg) translateX(200%)';
       card.style.transition = 'transform 0.3s ease';
       setTimeout(() => {
@@ -426,7 +509,6 @@ const Engine = (() => {
       setTimeout(() => {
         card.style.transform = '';
         card.style.transition = '';
-        // Still advance the story — we need them to match
         loadNode(node.next);
       }, 400);
     };
@@ -440,7 +522,15 @@ const Engine = (() => {
     const ms = $('match-screen');
     ms.classList.remove('hidden');
 
-    $('match-player-av').innerHTML = Characters.tinyPlayer(state.playerOpts);
+    // Player avatar: preset image or SVG
+    const playerAv = $('match-player-av');
+    if (state.playerPreset >= 0) {
+      loadSprite(playerAv, `img/creation/player_${state.playerPreset + 1}.png`,
+        () => Characters.tinyPlayer(state.playerOpts));
+    } else {
+      playerAv.innerHTML = Characters.tinyPlayer(state.playerOpts);
+    }
+
     loadSprite(
       $('match-noe-av'),
       'img/sprites/noe/avatar.png',
@@ -459,34 +549,48 @@ const Engine = (() => {
   /* ── Chat Interface ──────────────────────────────────── */
   let chatQueue = [];
   let chatIndex = 0;
+  let chatInitialized = false;
 
   function showChat(node) {
-    hideAllPanels();
+    // Keep choice container hidden but DO NOT touch chat-ui visibility yet
+    $('dialogue-box').classList.add('hidden');
+    $('narration-box').classList.add('hidden');
+    $('choice-container').classList.add('hidden');
+    $('profile-card').classList.add('hidden');
+    $('match-screen').classList.add('hidden');
+    $('chapter-card').classList.add('hidden');
     showNoeSprite(false);
-    applyBackground('chat');
 
     const chatUI = $('chat-ui');
     chatUI.classList.remove('hidden');
 
-    // Set avatar
-    loadSprite(
-      $('chat-av'),
-      'img/sprites/noe/avatar.png',
-      () => Characters.tinyNoe(state.noeOpts)
-    );
+    // Init bg picker once
+    if (!chatInitialized) {
+      chatInitialized = true;
+      initChatBgPicker();
+    }
 
-    // Update Noe expression
+    // Restore saved chat background
+    setChatBackground(state.chatBg);
+
+    // Set avatar
+    const chatAv = $('chat-av');
+    if (state.playerPreset >= 0) {
+      // keep Noe avatar in header — don't override with player
+    }
+    loadSprite(chatAv, 'img/sprites/noe/avatar.png',
+      () => Characters.tinyNoe(state.noeOpts));
+
     if (node.emotion) updateNoeSprite(node.emotion);
 
     chatQueue = node.messages || [];
     chatIndex = 0;
 
+    // ── KEEP existing messages — do NOT clear ──
     const msgContainer = $('chat-msgs');
-    msgContainer.innerHTML = '';
 
     function deliverNext() {
       if (chatIndex >= chatQueue.length) {
-        // All messages delivered, make clickable to advance
         chatUI.onclick = () => {
           chatUI.onclick = null;
           Audio.sfx('click');
@@ -498,18 +602,18 @@ const Engine = (() => {
       const msg = chatQueue[chatIndex++];
       const isNoe = msg.from === 'noe';
 
-      // Show typing indicator
       const typing = $('chat-typing');
       if (isNoe) {
         typing.classList.remove('hidden');
+        const delay = msg.photo ? 1200 : 900 + (msg.text || '').length * 18;
         setTimeout(() => {
           typing.classList.add('hidden');
-          appendChatMessage(msgContainer, msg.text, msg.from, msg.from === 'player' ? state.playerName : 'Noe');
+          appendChatMessage(msgContainer, msg, msg.from);
           Audio.sfx('notification');
           setTimeout(deliverNext, 600);
-        }, 900 + msg.text.length * 18);
+        }, delay);
       } else {
-        appendChatMessage(msgContainer, msg.text, msg.from, state.playerName);
+        appendChatMessage(msgContainer, msg, msg.from);
         setTimeout(deliverNext, 400);
       }
     }
@@ -517,25 +621,49 @@ const Engine = (() => {
     deliverNext();
   }
 
-  function appendChatMessage(container, text, from, name) {
+  function appendChatMessage(container, msg, from) {
     const wrap = document.createElement('div');
-    wrap.className = 'msg ' + from;
-    const bubble = document.createElement('div');
-    bubble.className = 'msg-bubble';
-    bubble.textContent = text;
+    wrap.className = 'msg ' + from + ' msg-anim';
+
+    // Photo message
+    if (msg.photo) {
+      const photoWrap = document.createElement('div');
+      photoWrap.className = 'msg-photo-wrap';
+      const img = document.createElement('img');
+      img.className = 'msg-photo';
+      img.src = msg.photo;
+      img.alt = 'Photo';
+      img.onerror = () => {
+        img.style.display = 'none';
+        const fb = document.createElement('div');
+        fb.className = 'msg-bubble';
+        fb.textContent = '📷 [photo]';
+        photoWrap.appendChild(fb);
+      };
+      photoWrap.appendChild(img);
+      wrap.appendChild(photoWrap);
+    }
+
+    // Text bubble
+    if (msg.text) {
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble';
+      bubble.textContent = msg.text;
+      wrap.appendChild(bubble);
+    }
+
     const time = document.createElement('div');
     time.className = 'msg-time';
     const now = new Date();
-    time.textContent = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
-    wrap.appendChild(bubble);
+    time.textContent = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
     wrap.appendChild(time);
+
     container.appendChild(wrap);
     container.scrollTop = container.scrollHeight;
   }
 
-  /* ── Chat Choices (appears after chat messages) ──────── */
+  /* ── Chat Choices ────────────────────────────────────── */
   function showChatChoice(node) {
-    // Display choices in chat style (still show chat UI underneath)
     const container = $('choice-container');
     container.classList.remove('hidden');
     $('choice-prompt').textContent = 'Your reply:';
@@ -547,11 +675,10 @@ const Engine = (() => {
       btn.className = 'choice-btn';
       btn.textContent = choice.text;
       btn.addEventListener('click', () => {
-        // Show player's choice as a chat bubble
         const chatUI = $('chat-ui');
         if (!chatUI.classList.contains('hidden')) {
           const msgs = $('chat-msgs');
-          appendChatMessage(msgs, choice.text, 'player', state.playerName);
+          appendChatMessage(msgs, { text: choice.text }, 'player');
         }
         Audio.sfx('choice');
         if (choice.sfx) Audio.sfx(choice.sfx);
@@ -567,7 +694,6 @@ const Engine = (() => {
   function changeScene(node) {
     applyBackground(node.background);
     if (node.music) applyMusic(node.music);
-    // Flash transition
     const flash = document.createElement('div');
     flash.className = 'scene-flash';
     document.body.appendChild(flash);
@@ -577,9 +703,9 @@ const Engine = (() => {
 
   /* ── Ending router ───────────────────────────────────── */
   function routeEnding(node) {
-    const rp = state.romancePoints;
+    const rp     = state.romancePoints;
     const routes = node.routes.slice().sort((a, b) => b.minRP - a.minRP);
-    const route = routes.find(r => rp >= r.minRP);
+    const route  = routes.find(r => rp >= r.minRP);
     loadNode(route ? route.next : 'ending_bad');
   }
 
@@ -588,16 +714,14 @@ const Engine = (() => {
     hideAllPanels();
     showNoeSprite(false);
 
-    // Update game bg with ending bg
     applyBackground(node.background);
     if (node.music) Audio.playTrack(node.music);
-    if (node.sfx) Audio.sfx(node.sfx);
+    if (node.sfx)   Audio.sfx(node.sfx);
 
-    // Give ending screen the matching background
     const endBgEl = $('ending-bg-layer');
     endBgEl.className = bgMap[node.background] || '';
     endBgEl.style.position = 'absolute';
-    endBgEl.style.inset = '0';
+    endBgEl.style.inset     = '0';
 
     showScreen('ending');
 
@@ -614,16 +738,16 @@ const Engine = (() => {
   function spawnEndingParticles(bg) {
     if (!bg.includes('ending')) return;
     const isPerfect = bg === 'ending-perfect';
-    const screen = $('ending-screen');
+    const screen    = $('ending-screen');
     for (let i = 0; i < (isPerfect ? 30 : 10); i++) {
       setTimeout(() => {
         const p = document.createElement('div');
-        p.className = 'particle';
-        p.textContent = isPerfect ? '♥' : '·';
-        p.style.left = Math.random() * 100 + 'vw';
+        p.className    = 'particle';
+        p.textContent  = isPerfect ? '♥' : '·';
+        p.style.left   = Math.random() * 100 + 'vw';
         p.style.bottom = Math.random() * 40 + '%';
         p.style.fontSize = (Math.random() * 1.5 + 0.5) + 'rem';
-        p.style.color = isPerfect ? '#FF6B9D' : '#aaa';
+        p.style.color  = isPerfect ? '#FF6B9D' : '#aaa';
         p.style.animationDuration = (Math.random() * 2 + 1.5) + 's';
         screen.appendChild(p);
         setTimeout(() => p.remove(), 4000);
@@ -633,7 +757,6 @@ const Engine = (() => {
 
   /* ── Typewriter effect ───────────────────────────────── */
   let typingTimer = null;
-  let currentTypingResolve = null;
 
   function typeText(el, text, onComplete) {
     if (typingTimer) clearInterval(typingTimer);
@@ -661,9 +784,9 @@ const Engine = (() => {
 
   function skipTyping(el, fullText) {
     if (typingTimer) { clearInterval(typingTimer); typingTimer = null; }
-    el.textContent = fullText;
+    el.textContent    = fullText;
     state.isAnimating = false;
-    state.canAdvance = true;
+    state.canAdvance  = true;
   }
 
   /* ── Auto-play ───────────────────────────────────────── */
@@ -703,11 +826,13 @@ const Engine = (() => {
   /* ── Save / Load ─────────────────────────────────────── */
   function saveGame() {
     const saveData = {
-      node: state.currentNode,
-      rp: state.romancePoints,
-      playerName: state.playerName,
-      playerOpts: state.playerOpts,
-      noeOpts: state.noeOpts,
+      node:         state.currentNode,
+      rp:           state.romancePoints,
+      playerName:   state.playerName,
+      playerOpts:   state.playerOpts,
+      noeOpts:      state.noeOpts,
+      playerPreset: state.playerPreset,
+      chatBg:       state.chatBg,
     };
     try {
       localStorage.setItem('ourstory_save', JSON.stringify(saveData));
@@ -721,10 +846,12 @@ const Engine = (() => {
       if (!raw) return false;
       const data = JSON.parse(raw);
       state.currentNode   = data.node;
-      state.romancePoints = data.rp || Story.startRP;
+      state.romancePoints = data.rp    || Story.startRP;
       state.playerName    = data.playerName || 'You';
       state.playerOpts    = data.playerOpts || state.playerOpts;
       state.noeOpts       = data.noeOpts    || state.noeOpts;
+      state.playerPreset  = data.playerPreset !== undefined ? data.playerPreset : -1;
+      state.chatBg        = data.chatBg || 'room';
       return true;
     } catch(e) { return false; }
   }
@@ -749,8 +876,8 @@ const Engine = (() => {
     });
 
     $('vol-master').addEventListener('input', e => Audio.setVolume('master', e.target.value / 100));
-    $('vol-music').addEventListener('input', e => Audio.setVolume('music', e.target.value / 100));
-    $('vol-sfx').addEventListener('input', e => Audio.setVolume('sfx', e.target.value / 100));
+    $('vol-music').addEventListener('input', e => Audio.setVolume('music',  e.target.value / 100));
+    $('vol-sfx').addEventListener('input',   e => Audio.setVolume('sfx',   e.target.value / 100));
 
     document.querySelectorAll('.speed-chip').forEach(c => {
       c.addEventListener('click', () => {
@@ -762,7 +889,7 @@ const Engine = (() => {
     });
   }
 
-  /* ── Ending screen buttons ───────────────────────────── */
+  /* ── Ending buttons ──────────────────────────────────── */
   function initEndingButtons() {
     $('btn-replay').addEventListener('click', () => {
       Audio.sfx('click');
@@ -780,8 +907,12 @@ const Engine = (() => {
   function resetGame() {
     state.currentNode   = null;
     state.romancePoints = Story.startRP;
-    currentBg   = null;
-    currentMusic = null;
+    state.playerPreset  = -1;
+    state.chatBg        = 'room';
+    chatInitialized     = false;
+    currentBg           = null;
+    currentMusic        = null;
+    $('chat-msgs').innerHTML = '';
     hideAllPanels();
   }
 
@@ -798,6 +929,7 @@ const Engine = (() => {
         Audio.sfx('click');
         Audio.init();
         showScreen('game');
+        $('chat-msgs').innerHTML = '';
         updateNoeSprite('neutral');
         updateRomanceMeter();
         initGameControls();
@@ -815,9 +947,9 @@ const Engine = (() => {
         const node = Story.nodes[state.currentNode];
         if (!node) return;
         if (state.isAnimating) {
-          const dialogueEl = $('dialogue-text');
+          const dialogueEl  = $('dialogue-text');
           const narrationEl = $('narration-text');
-          if (!$('dialogue-box').classList.contains('hidden')) skipTyping(dialogueEl, node.text);
+          if (!$('dialogue-box').classList.contains('hidden'))  skipTyping(dialogueEl, node.text);
           if (!$('narration-box').classList.contains('hidden')) skipTyping(narrationEl, node.text);
           return;
         }
@@ -829,9 +961,7 @@ const Engine = (() => {
 
   /* ── Bootstrap ───────────────────────────────────────── */
   function init() {
-    // Unlock audio on first interaction
     document.addEventListener('click', () => Audio.resume(), { once: true });
-
     runLoading();
     startFloatingHearts();
     initTitleButtons();
