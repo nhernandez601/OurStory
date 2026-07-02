@@ -8,6 +8,7 @@ const Engine = (() => {
   const state = {
     currentNode:   null,
     romancePoints: Story.startRP,
+    flags:         {},
     playerName:    'You',
     playerOpts:    { skin: 's2', hairColor: 'hc1', hairStyle: 'wave', vibe: 'sweet' },
     noeOpts:       { outfit: 'red-hoodie', hair: 'curly', glasses: true },
@@ -195,12 +196,12 @@ const Engine = (() => {
   }
 
   /* Try each path in order; first that loads wins */
-  function loadSpriteChain(container, paths, svgFallback) {
+  function loadSpriteChain(container, paths, svgFallback, className) {
     if (!paths.length) { container.innerHTML = svgFallback(); return; }
     const img = new Image();
-    img.className = 'creation-preview-img';
+    img.className = className || 'creation-preview-img';
     img.onload  = () => { container.innerHTML = ''; container.appendChild(img); };
-    img.onerror = () => loadSpriteChain(container, paths.slice(1), svgFallback);
+    img.onerror = () => loadSpriteChain(container, paths.slice(1), svgFallback, className);
     img.src = paths[0];
   }
 
@@ -217,7 +218,7 @@ const Engine = (() => {
     updateNoeSprite('neutral');
     updateRomanceMeter();
     initGameControls();
-    loadNode('c1_title');
+    loadNode(Story.startNode || 'c1_title');
   }
 
   function initGameControls() {
@@ -306,6 +307,17 @@ const Engine = (() => {
     currentBg = bg;
     const el = $('game-bg');
     el.className = bgMap[bg] || 'bg-app';
+    // Try a real background image; keep CSS gradient as fallback
+    el.style.backgroundImage = '';
+    const img = new Image();
+    img.onload = () => {
+      if (currentBg === bg) {
+        el.style.backgroundImage = `url(${img.src})`;
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+      }
+    };
+    img.src = `img/bg/${bg}.jpg`;
   }
 
   function applyMusic(track) {
@@ -344,6 +356,33 @@ const Engine = (() => {
     }
   }
 
+  /* ── Player sprite (preset image → per-emotion PNG → SVG) ── */
+  function updatePlayerSprite(emotion) {
+    const el = $('player-sprite');
+    if (!el) return;
+    const paths = [`img/sprites/player/${emotion || 'neutral'}.png`];
+    if (state.playerPreset >= 0) paths.push(`img/creation/player_${state.playerPreset + 1}.png`);
+    loadSpriteChain(el, paths, () => Characters.player(state.playerOpts), 'sprite-img');
+  }
+
+  function showPlayerSprite(show) {
+    const wrap = $('player-sprite-wrap');
+    if (!wrap) return;
+    const noeWrap = $('noe-sprite-wrap');
+    if (show) {
+      wrap.classList.remove('offscreen');
+      noeWrap.classList.add('side-right');
+    } else {
+      wrap.classList.add('offscreen');
+      noeWrap.classList.remove('side-right');
+    }
+  }
+
+  /* ── Cinematic letterbox ─────────────────────────────── */
+  function applyCinematic(on) {
+    screens.game.classList.toggle('cinematic', !!on);
+  }
+
   /* ── Romance meter ───────────────────────────────────── */
   function updateRomanceMeter() {
     const pct = Math.max(0, Math.min(100, state.romancePoints));
@@ -371,8 +410,10 @@ const Engine = (() => {
   function showChapterTitle(node) {
     hideAllPanels();
     showNoeSprite(false);
+    showPlayerSprite(false);
     applyBackground(node.background);
     applyMusic(node.music);
+    applyCinematic(true);
 
     const card = $('chapter-card');
     $('chapter-num').textContent  = node.chapterNum;
@@ -390,7 +431,9 @@ const Engine = (() => {
     hideAllPanels();
     applyBackground(node.background);
     applyMusic(node.music);
+    applyCinematic(node.cinematic);
     showNoeSprite(false);
+    showPlayerSprite(false);
 
     const box = $('narration-box');
     box.classList.remove('hidden');
@@ -407,10 +450,13 @@ const Engine = (() => {
     hideAllPanels();
     applyBackground(node.background);
     applyMusic(node.music);
+    applyCinematic(node.cinematic);
 
     const isNoe = node.speaker === 'Noe';
-    showNoeSprite(isNoe);
-    if (isNoe && node.emotion) updateNoeSprite(node.emotion);
+    showNoeSprite(isNoe || node.showPlayer);
+    if (node.emotion) updateNoeSprite(node.emotion);
+    showPlayerSprite(!!node.showPlayer);
+    if (node.showPlayer) updatePlayerSprite(node.playerEmotion);
 
     const box = $('dialogue-box');
     box.classList.remove('hidden');
@@ -468,10 +514,25 @@ const Engine = (() => {
     });
   }
 
-  function handleChoice(choice) {
-    Audio.sfx('choice');
+  function applyChoiceEffects(choice) {
     if (choice.sfx) Audio.sfx(choice.sfx);
     if (choice.rp) addRomancePoints(choice.rp);
+    if (choice.flag) state.flags[choice.flag] = true;
+    if (choice.remember) showMemoryToast();
+  }
+
+  function showMemoryToast() {
+    const toast = document.createElement('div');
+    toast.className = 'memory-toast';
+    toast.textContent = '♥ Noe will remember that.';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 30);
+    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 600); }, 2600);
+  }
+
+  function handleChoice(choice) {
+    Audio.sfx('choice');
+    applyChoiceEffects(choice);
     hideAllPanels();
     loadNode(choice.next);
   }
@@ -480,6 +541,8 @@ const Engine = (() => {
   function showProfile(node) {
     hideAllPanels();
     showNoeSprite(false);
+    showPlayerSprite(false);
+    applyCinematic(false);
     applyBackground('app');
 
     const card = $('profile-card');
@@ -560,6 +623,8 @@ const Engine = (() => {
     $('match-screen').classList.add('hidden');
     $('chapter-card').classList.add('hidden');
     showNoeSprite(false);
+    showPlayerSprite(false);
+    applyCinematic(false);
 
     const chatUI = $('chat-ui');
     chatUI.classList.remove('hidden');
@@ -681,8 +746,7 @@ const Engine = (() => {
           appendChatMessage(msgs, { text: choice.text }, 'player');
         }
         Audio.sfx('choice');
-        if (choice.sfx) Audio.sfx(choice.sfx);
-        if (choice.rp) addRomancePoints(choice.rp);
+        applyChoiceEffects(choice);
         container.classList.add('hidden');
         setTimeout(() => loadNode(choice.next), 300);
       });
@@ -727,7 +791,13 @@ const Engine = (() => {
 
     $('ending-title').textContent    = node.title;
     $('ending-subtitle').textContent = node.subtitle;
-    $('ending-text').textContent     = node.text;
+    // Personalize with epilogue lines earned through choices
+    let fullText = node.text;
+    if (node.epilogue) {
+      const earned = node.epilogue.filter(e => state.flags[e.flag]).map(e => e.text);
+      if (earned.length) fullText += '\n\n' + earned.join('\n');
+    }
+    $('ending-text').textContent     = fullText;
     $('ending-badge').textContent    = node.badge;
     $('ending-deco').textContent     = node.deco || '♥';
     $('final-romance').textContent   = state.romancePoints;
@@ -828,6 +898,7 @@ const Engine = (() => {
     const saveData = {
       node:         state.currentNode,
       rp:           state.romancePoints,
+      flags:        state.flags,
       playerName:   state.playerName,
       playerOpts:   state.playerOpts,
       noeOpts:      state.noeOpts,
@@ -847,6 +918,7 @@ const Engine = (() => {
       const data = JSON.parse(raw);
       state.currentNode   = data.node;
       state.romancePoints = data.rp    || Story.startRP;
+      state.flags         = data.flags || {};
       state.playerName    = data.playerName || 'You';
       state.playerOpts    = data.playerOpts || state.playerOpts;
       state.noeOpts       = data.noeOpts    || state.noeOpts;
@@ -907,12 +979,15 @@ const Engine = (() => {
   function resetGame() {
     state.currentNode   = null;
     state.romancePoints = Story.startRP;
+    state.flags         = {};
     state.playerPreset  = -1;
     state.chatBg        = 'room';
     chatInitialized     = false;
     currentBg           = null;
     currentMusic        = null;
     $('chat-msgs').innerHTML = '';
+    applyCinematic(false);
+    showPlayerSprite(false);
     hideAllPanels();
   }
 
@@ -933,7 +1008,7 @@ const Engine = (() => {
         updateNoeSprite('neutral');
         updateRomanceMeter();
         initGameControls();
-        loadNode(state.currentNode || 'c1_title');
+        loadNode(state.currentNode || Story.startNode || 'c1_title');
       } else {
         showSaveNotice('No save found');
       }
