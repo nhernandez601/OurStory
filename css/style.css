@@ -288,9 +288,19 @@ html, body {
 .emotion-pop { animation: emotionPop 0.35s ease forwards; }
 
 #noe-sprite svg      { width: clamp(200px, 45vw, 320px); height: auto; }
-#noe-sprite .sprite-img { width: clamp(200px, 45vw, 380px); height: auto; object-fit: contain; object-position: bottom center; display: block; }
+#noe-sprite .sprite-img {
+  width: clamp(200px, 42vw, 360px); height: auto;
+  object-fit: contain; object-position: bottom center; display: block;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55);
+}
 #player-sprite svg { width: clamp(170px, 38vw, 280px); height: auto; }
-#player-sprite .sprite-img { width: clamp(170px, 38vw, 320px); height: auto; object-fit: contain; object-position: bottom center; display: block; }
+#player-sprite .sprite-img {
+  width: clamp(170px, 34vw, 300px); height: auto;
+  object-fit: contain; object-position: bottom center; display: block;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55);
+}
 
 /* Two-character staging */
 .sprite-wrap.side-left  { left: 4%; }

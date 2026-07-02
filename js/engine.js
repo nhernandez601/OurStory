@@ -307,17 +307,7 @@ const Engine = (() => {
     currentBg = bg;
     const el = $('game-bg');
     el.className = bgMap[bg] || 'bg-app';
-    // Try a real background image; keep CSS gradient as fallback
-    el.style.backgroundImage = '';
-    const img = new Image();
-    img.onload = () => {
-      if (currentBg === bg) {
-        el.style.backgroundImage = `url(${img.src})`;
-        el.style.backgroundSize = 'cover';
-        el.style.backgroundPosition = 'center';
-      }
-    };
-    img.src = `img/bg/${bg}.jpg`;
+    // Real background images load via CSS (img/backgrounds/bg_<name>.jpg)
   }
 
   function applyMusic(track) {
