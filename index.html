@@ -49,42 +49,79 @@
 
     <!-- PLAYER TAB -->
     <div class="tab-pane active" id="tab-player">
-      <div class="avatar-wrap">
-        <div id="player-preview-svg"></div>
+      <!-- Preset grid shown ABOVE custom options -->
+      <div class="opt-group">
+        <label>Choose a Character</label>
+        <div class="preset-grid" id="player-presets">
+          <div class="preset-card active" data-preset="-1" title="Custom">
+            <div class="preset-custom-icon">✦</div>
+            <div class="preset-name">Custom</div>
+          </div>
+          <div class="preset-card" data-preset="0" title="Preset 1">
+            <img src="img/creation/player_1.png" alt="Preset 1" onerror="this.parentElement.classList.add('no-img')">
+            <div class="preset-name">Ava</div>
+          </div>
+          <div class="preset-card" data-preset="1" title="Preset 2">
+            <img src="img/creation/player_2.png" alt="Preset 2" onerror="this.parentElement.classList.add('no-img')">
+            <div class="preset-name">Maya</div>
+          </div>
+          <div class="preset-card" data-preset="2" title="Preset 3">
+            <img src="img/creation/player_3.png" alt="Preset 3" onerror="this.parentElement.classList.add('no-img')">
+            <div class="preset-name">Zara</div>
+          </div>
+          <div class="preset-card" data-preset="3" title="Preset 4">
+            <img src="img/creation/player_4.png" alt="Preset 4" onerror="this.parentElement.classList.add('no-img')">
+            <div class="preset-name">Luna</div>
+          </div>
+          <div class="preset-card" data-preset="4" title="Preset 5">
+            <img src="img/creation/player_5.png" alt="Preset 5" onerror="this.parentElement.classList.add('no-img')">
+            <div class="preset-name">Kai</div>
+          </div>
+        </div>
       </div>
+
+      <div class="avatar-wrap" id="player-avatar-wrap">
+        <div id="player-preview"></div>
+      </div>
+
       <div class="opt-group">
         <label>Your Name</label>
         <input type="text" id="player-name-input" placeholder="Enter your name…" maxlength="20" autocomplete="off">
       </div>
-      <div class="opt-group">
-        <label>Skin Tone</label>
-        <div class="swatch-row" id="skin-swatches">
-          <div class="swatch active" data-val="s1" style="background:#FDDBB4" title="Light"></div>
-          <div class="swatch" data-val="s2" style="background:#E8B89A" title="Medium Light"></div>
-          <div class="swatch" data-val="s3" style="background:#C87D4C" title="Medium"></div>
-          <div class="swatch" data-val="s4" style="background:#8D5524" title="Medium Dark"></div>
-          <div class="swatch" data-val="s5" style="background:#4A2C17" title="Dark"></div>
+
+      <!-- Custom options (hidden when preset selected) -->
+      <div id="custom-player-opts">
+        <div class="opt-group">
+          <label>Skin Tone</label>
+          <div class="swatch-row" id="skin-swatches">
+            <div class="swatch active" data-val="s1" style="background:#FDDBB4" title="Light"></div>
+            <div class="swatch" data-val="s2" style="background:#E8B89A" title="Medium Light"></div>
+            <div class="swatch" data-val="s3" style="background:#C87D4C" title="Medium"></div>
+            <div class="swatch" data-val="s4" style="background:#8D5524" title="Medium Dark"></div>
+            <div class="swatch" data-val="s5" style="background:#4A2C17" title="Dark"></div>
+          </div>
+        </div>
+        <div class="opt-group">
+          <label>Hair Color</label>
+          <div class="swatch-row" id="hair-color-swatches">
+            <div class="swatch active" data-val="hc1" style="background:#1a1a1a" title="Black"></div>
+            <div class="swatch" data-val="hc2" style="background:#6B3A2A" title="Brown"></div>
+            <div class="swatch" data-val="hc3" style="background:#D4A017" title="Blonde"></div>
+            <div class="swatch" data-val="hc4" style="background:#C0392B" title="Red"></div>
+            <div class="swatch" data-val="hc5" style="background:#7D3C98" title="Purple"></div>
+          </div>
+        </div>
+        <div class="opt-group">
+          <label>Hair Style</label>
+          <div class="chip-row" id="hair-style-chips">
+            <div class="chip active" data-val="short">Short</div>
+            <div class="chip" data-val="wave">Wavy</div>
+            <div class="chip" data-val="long">Long Straight</div>
+            <div class="chip" data-val="curly">Curly</div>
+          </div>
         </div>
       </div>
-      <div class="opt-group">
-        <label>Hair Color</label>
-        <div class="swatch-row" id="hair-color-swatches">
-          <div class="swatch active" data-val="hc1" style="background:#1a1a1a" title="Black"></div>
-          <div class="swatch" data-val="hc2" style="background:#6B3A2A" title="Brown"></div>
-          <div class="swatch" data-val="hc3" style="background:#D4A017" title="Blonde"></div>
-          <div class="swatch" data-val="hc4" style="background:#C0392B" title="Red"></div>
-          <div class="swatch" data-val="hc5" style="background:#7D3C98" title="Purple"></div>
-        </div>
-      </div>
-      <div class="opt-group">
-        <label>Hair Style</label>
-        <div class="chip-row" id="hair-style-chips">
-          <div class="chip active" data-val="short">Short</div>
-          <div class="chip" data-val="wave">Wavy</div>
-          <div class="chip" data-val="long">Long Straight</div>
-          <div class="chip" data-val="curly">Curly</div>
-        </div>
-      </div>
+
       <div class="opt-group">
         <label>Vibe</label>
         <div class="chip-row" id="vibe-chips">
@@ -97,8 +134,8 @@
 
     <!-- NOE TAB -->
     <div class="tab-pane" id="tab-noe">
-      <div class="avatar-wrap">
-        <div id="noe-preview-svg"></div>
+      <div class="avatar-wrap noe-avatar-wrap">
+        <div id="noe-preview" class="noe-preview-wrap"></div>
       </div>
       <div class="opt-group">
         <label>Outfit</label>
@@ -132,13 +169,13 @@
 
 <!-- GAME SCREEN -->
 <div id="game-screen" class="screen">
-  <!-- Background -->
+  <!-- Background layers -->
   <div id="game-bg" class="bg-app"></div>
   <div id="bg-overlay" class="bg-overlay"></div>
 
   <!-- Sprites -->
   <div id="sprites-layer">
-    <div id="noe-sprite-wrap" class="sprite-wrap">
+    <div id="noe-sprite-wrap" class="sprite-wrap offscreen">
       <div id="noe-sprite"></div>
     </div>
   </div>
@@ -187,13 +224,22 @@
     </div>
 
     <!-- Chat Interface -->
-    <div id="chat-ui" class="hidden">
+    <div id="chat-ui" class="hidden chat-bg-room">
       <div class="chat-header">
         <div class="chat-av" id="chat-av"></div>
         <div class="chat-hdr-info">
           <div class="chat-hdr-name">Noe</div>
           <div class="chat-hdr-status">● Active now</div>
         </div>
+        <button id="chat-bg-btn" class="chat-bg-toggle" title="Change background">🖼</button>
+      </div>
+      <!-- Background picker panel -->
+      <div id="chat-bg-picker" class="chat-bg-picker hidden">
+        <div class="chat-bg-option active" data-bg="room">🌙 Night Room</div>
+        <div class="chat-bg-option" data-bg="cafe">☕ Cozy Café</div>
+        <div class="chat-bg-option" data-bg="city">🌆 Neon City</div>
+        <div class="chat-bg-option" data-bg="park">🌿 Park Night</div>
+        <div class="chat-bg-option" data-bg="stars">✨ Starry Sky</div>
       </div>
       <div class="chat-messages" id="chat-msgs"></div>
       <div class="chat-typing hidden" id="chat-typing">

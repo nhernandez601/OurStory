@@ -105,8 +105,8 @@ const Story = {
       speaker: 'noe',
       emotion: 'laughing',
       messages: [
-        { from: 'noe', text: 'HONESTLY fair. Ginger has broken hearts before. She\'s a menace in an orange package.' },
-        { from: 'noe', text: 'She did not approve this message but she didn\'t knock my phone away either. That\'s basically a five star review from her.' },
+        { from: 'noe', text: 'HONESTLY fair. Ginger has broken hearts before. He\'s a menace in an orange package.' },
+        { from: 'noe', text: 'He did not approve this message but he didn\'t knock my phone away either. That\'s basically a five star review from him.' },
       ],
       next: 'c1_followup',
     },
@@ -303,8 +303,8 @@ const Story = {
       speaker: 'noe',
       emotion: 'happy',
       messages: [
-        { from: 'noe', text: '📷 [photo sent]' },
-        { from: 'noe', text: 'This is Ginger. She does not approve of strangers as a rule but she\'s been sitting near my phone all week so I think that counts as something.' },
+        { from: 'noe', photo: 'img/ginger.png', text: null },
+        { from: 'noe', text: 'This is Ginger. He does not approve of strangers as a rule but he\'s been sitting near my phone all week so I think that counts as something.' },
       ],
       next: 'c2_ginger_choice',
     },
@@ -323,8 +323,8 @@ const Story = {
       speaker: 'noe',
       emotion: 'happy',
       messages: [
-        { from: 'noe', text: 'I\'ll let her know. She\'ll pretend she doesn\'t care but she WILL be flattered.' },
-        { from: 'noe', text: 'She sat on my face at 3am this morning to signal feeding time so she\'s not without flaws but she is perfect.' },
+        { from: 'noe', text: 'I\'ll let him know. He\'ll pretend he doesn\'t care but he WILL be flattered.' },
+        { from: 'noe', text: 'He sat on my face at 3am this morning to signal feeding time so he\'s not without flaws but he is perfect.' },
       ],
       next: 'c2_work_topic',
     },
@@ -334,7 +334,7 @@ const Story = {
       speaker: 'noe',
       emotion: 'laughing',
       messages: [
-        { from: 'noe', text: 'YOU UNDERSTOOD THE ASSIGNMENT. She absolutely runs the household.' },
+        { from: 'noe', text: 'YOU UNDERSTOOD THE ASSIGNMENT. He absolutely runs the household.' },
         { from: 'noe', text: 'I\'m just the IT guy who pays rent and provides lap space. That\'s the whole relationship.' },
       ],
       next: 'c2_work_topic',
@@ -345,8 +345,8 @@ const Story = {
       speaker: 'noe',
       emotion: 'laughing',
       messages: [
-        { from: 'noe', text: 'She is 100% judging you. She judges everyone. Don\'t take it personally.' },
-        { from: 'noe', text: 'She\'s judging ME right now and I live here. You\'re doing fine.' },
+        { from: 'noe', text: 'He is 100% judging you. He judges everyone. Don\'t take it personally.' },
+        { from: 'noe', text: 'He\'s judging ME right now and I live here. You\'re doing fine.' },
       ],
       next: 'c2_work_topic',
     },
@@ -1473,10 +1473,9 @@ const Story = {
     route_ending: {
       type: 'route',
       routes: [
-        { minRP: 75,  next: 'ending_perfect'  },
-        { minRP: 50,  next: 'ending_good'     },
-        { minRP: 25,  next: 'ending_neutral'  },
-        { minRP: 0,   next: 'ending_bad'      },
+        { minRP: 70, next: 'ending_perfect' },
+        { minRP: 40, next: 'ending_good'    },
+        { minRP: 0,  next: 'ending_bad'     },
       ],
     },
 
